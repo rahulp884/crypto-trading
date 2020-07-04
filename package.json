@@ -23,6 +23,7 @@
     "needle": "^2.5.0",
     "node-fetch": "^2.6.0",
     "poloniex-api-node": "^2.0.2",
+    "request": "^2.88.2",
     "rpc-request": "^4.0.9",
     "tsconfig-paths": "^3.9.0"
   },

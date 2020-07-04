@@ -25,7 +25,7 @@ export function signRequest(options: SingRequestOptions): SignedRequest {
     let signature = crypto.createHmac('sha512', options.secret).update(options.query).digest('hex');
 
     return {
-        Key: options.key,
-        Sign: signature
+        'Key': options.key,
+        'Sign': signature
     };
 }
