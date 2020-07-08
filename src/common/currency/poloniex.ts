@@ -1,15 +1,11 @@
 import crypto from 'crypto';
-import request from 'request';
-const nonce = require('nonce')();
-import { SingRequestOptions, signRequest } from '../authentication/sign-request';
-
 import config from 'config';
-
+import nodeFetch from 'node-fetch';
+const nonce = require('nonce')();
 const version = require('../../../package.json').version;
 const USER_AGENT = `${require('../../../package.json').name} ${version}`;
 const DEFAULT_SOCKETTIMEOUT = 60 * 1000;
 const DEFAULT_KEEPALIVE = true;
-const STRICT_SSL = true;
 
 const PRIVATE_API_URL = 'https://poloniex.com/tradingApi'
 export class Poloniex /**extends RPC*/ {
@@ -23,7 +19,6 @@ export class Poloniex /**extends RPC*/ {
         this.secret = config['POLONIEX_SECRET'];
         this.options = {};
         const result = await this.returnBalances();
-        console.log("*************** All balances ***************", result);
         return result;
     }
 
@@ -45,9 +40,8 @@ export class Poloniex /**extends RPC*/ {
         param.nonce = this.options && this.options.nonce ? this.options.nonce() : nonce(16);
         let options = {
             method: 'POST',
-            url: PRIVATE_API_URL,
-            form: param,
-            headers: this.getPrivateHeaders(param),
+            body: this.getFormData(param),
+            headers: this.getPrivateHeaders(param)
         };
         if (options.headers) {
             return this.makeRequest(options);
@@ -73,65 +67,55 @@ export class Poloniex /**extends RPC*/ {
         };
     }
 
-    private makeRequest(options) {
-        if (!('headers' in options)) {
-            options.headers = {};
-        }
-
-        options.json = true;
-        // add custom headers only if they are not already defined
-        if (this.options !== undefined && this.options.headers !== undefined) {
-            for (let h in this.options.headers) {
-                if (this.options.headers.hasOwnProperty(h) && options.headers[h] === undefined) {
-                    options.headers[h] = this.options.headers[h];
-                }
+    private getFormData(formData) {
+        const params = new URLSearchParams();
+        for (const key in formData) {
+            if (formData.hasOwnProperty(key)) {
+                const element = formData[key];
+                params.append(key, element);
             }
         }
+        return params;
+    }
 
-        options.headers['User-Agent'] = options.headers['User-Agent'] || USER_AGENT;
-        options.strictSSL = true;
-        options.timeout = this.options && this.options.socketTimeout || DEFAULT_SOCKETTIMEOUT;
-        options.forever = this.options && this.options.hasOwnProperty('keepAlive') ? this.options.keepAlive : DEFAULT_KEEPALIVE;
-        if (options.forever) {
-            options.headers['Connection'] = options.headers['Connection'] || 'keep-alive';
-        }
+    private async makeRequest(options) {
+        try {
+            if (!('headers' in options)) {
+                options.headers = {};
+            }
 
-        if (this.options && this.options.hasOwnProperty('proxy')) {
-            options.proxy = this.options.proxy;
-        }
-
-        if (this.options && this.options.hasOwnProperty('agent')) {
-            options.agent = this.options.agent;
-        }
-
-        return new Promise((resolve, reject) => {
-            request(options, function (error, response, body) {
-                let err = error;
-                if (!err && response.statusCode !== 200) {
-                    let errMsg = `Poloniex error ${response.statusCode}: ${response.statusMessage}`;
-                    if (typeof response.body === 'object' && response.body.hasOwnProperty('error')) {
-                        errMsg = `${errMsg}. ${response.body.error}`;
+            options.json = true;
+            // add custom headers only if they are not already defined
+            if (this.options !== undefined && this.options.headers !== undefined) {
+                for (let h in this.options.headers) {
+                    if (this.options.headers.hasOwnProperty(h) && options.headers[h] === undefined) {
+                        options.headers[h] = this.options.headers[h];
                     }
-
-                    err = new Error(errMsg);
                 }
+            }
 
-                if (!err && (typeof response.body === 'undefined' || response.body === null)) {
-                    err = new Error('Poloniex error: Empty response');
-                }
+            options.headers['User-Agent'] = options.headers['User-Agent'] || USER_AGENT;
+            options.strictSSL = true;
+            options.timeout = this.options && this.options.socketTimeout || DEFAULT_SOCKETTIMEOUT;
+            options.forever = this.options && this.options.hasOwnProperty('keepAlive') ? this.options.keepAlive : DEFAULT_KEEPALIVE;
+            if (options.forever) {
+                options.headers['Connection'] = options.headers['Connection'] || 'keep-alive';
+            }
 
-                if (!err && body.error) {
-                    err = new Error(body.error);
-                }
+            if (this.options && this.options.hasOwnProperty('proxy')) {
+                options.proxy = this.options.proxy;
+            }
 
-                if (!err) {
-                    return resolve(body);
-                } else {
-                    return reject(err);
-                }
-            });
-
-        });
+            if (this.options && this.options.hasOwnProperty('agent')) {
+                options.agent = this.options.agent;
+            }
+            console.log(options);
+            const res = await nodeFetch(PRIVATE_API_URL, options)
+            return await res.json();
+        } catch (error) {
+            console.log('Error in fetch request: ', error);
+            throw error;
+        };
     }
 
 }
