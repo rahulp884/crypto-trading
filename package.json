@@ -19,7 +19,7 @@
     "crypto": "^1.0.1",
     "express": "^4.17.1",
     "mysql2": "^2.1.0",
-    "node-fetch": "^2.6.1",
+    "node-fetch": "^2.6.7",
     "tsconfig-paths": "^3.9.0"
   },
   "devDependencies": {
